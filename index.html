@@ -27,14 +27,14 @@
   .ldot.blue { background:#1d73e8; }
   .ldot.red { background:#e74c3c; }
 
-  #sheet { position:fixed; left:0; right:0; bottom:0; z-index:20; background:#fff; border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:52vh; transition:transform 0.28s cubic-bezier(.4,0,.2,1); }
+  #sheet { position:fixed; left:0; right:0; bottom:0; z-index:20; background:#fff; border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,0.12); display:flex; flex-direction:column; height:52vh; overflow:hidden; transition:height 0.28s cubic-bezier(.4,0,.2,1); }
   #sheet.no-anim { transition:none; }
   #handle { height:28px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; touch-action:none; user-select:none; -webkit-user-select:none; }
   #handle i { width:40px; height:4px; border-radius:2px; background:#d5d9e0; }
-  #tabs { display:flex; padding:0 14px 8px; gap:8px; }
+  #tabs { display:flex; padding:0 14px 8px; gap:8px; flex:0 0 auto; }
   #tabs button { flex:1; padding:8px 0; border:none; border-radius:10px; background:#f0f2f6; color:#556; font-size:13px; font-weight:600; cursor:pointer; }
   #tabs button.active { background:#1d73e8; color:#fff; }
-  #list { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:2px 12px calc(env(safe-area-inset-bottom) + 14px); }
+  #list { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:2px 12px calc(env(safe-area-inset-bottom) + 14px); }
   .item { display:flex; align-items:flex-start; gap:10px; padding:11px 10px; border-radius:12px; margin-bottom:8px; background:#f8f9fb; cursor:pointer; }
   .item:active { background:#eef1f6; }
   .badge { flex:0 0 auto; width:26px; height:26px; border-radius:50%; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
@@ -344,48 +344,55 @@
     renderList();
   }
 
-  // ================= 底部面板拖拽（下拉收起 / 上滑展开 / 轻点切换） =================
-  let sheetCollapsed = false;
+  // ================= 底部面板拖拽（跟手三态：收起 / 中 / 盖住地图） =================
   function sheetEl(){ return document.getElementById('sheet'); }
-  function collapseOffset(){ return sheetEl().getBoundingClientRect().height - 36; }
-  function sheetCurrentOffset(){
-    const m = sheetEl().style.transform.match(/translateY\((-?[\d.]+)px\)/);
-    return m ? parseFloat(m[1]) : 0;
-  }
-  function applySheetState(){
-    sheetEl().style.transform = 'translateY(' + (sheetCollapsed ? collapseOffset() : 0) + 'px)';
+  function snapHeights(){
+    const vh = window.innerHeight;
+    return [36, Math.round(vh * 0.52), Math.round(vh * 0.88)];
   }
   (function(){
     const handleEl = document.getElementById('handle');
-    let dragInfo = null;
+    let drag = null;
     handleEl.addEventListener('pointerdown', function(e){
-      dragInfo = { startY: e.clientY, startOffset: sheetCurrentOffset() };
+      drag = { startY: e.clientY, startH: sheetEl().getBoundingClientRect().height };
       sheetEl().classList.add('no-anim');
       try { handleEl.setPointerCapture(e.pointerId); } catch(_) {}
     });
     handleEl.addEventListener('pointermove', function(e){
-      if (!dragInfo) return;
+      if (!drag) return;
       e.preventDefault();
-      const dy = e.clientY - dragInfo.startY;
-      const max = collapseOffset();
-      let off = dragInfo.startOffset + dy;
-      off = Math.max(0, Math.min(max, off));
-      sheetEl().style.transform = 'translateY(' + off + 'px)';
+      const snaps = snapHeights();
+      let h = drag.startH + (drag.startY - e.clientY);
+      h = Math.max(snaps[0], Math.min(snaps[2], h));
+      sheetEl().style.height = h + 'px';
     });
     handleEl.addEventListener('pointerup', function(e){
-      if (!dragInfo) return;
-      const dy = e.clientY - dragInfo.startY;
-      if (Math.abs(dy) < 6) { sheetCollapsed = !sheetCollapsed; }
-      else { sheetCollapsed = dy > 0; }
-      dragInfo = null;
+      if (!drag) return;
+      const snaps = snapHeights();
+      const dy = drag.startY - e.clientY;
+      const cur = sheetEl().getBoundingClientRect().height;
+      let target;
+      if (Math.abs(dy) < 6) {
+        target = cur > snaps[1] * 0.6 ? snaps[0] : snaps[1];
+      } else {
+        const cands = dy > 0 ? [snaps[1], snaps[2]] : [snaps[0], snaps[1]];
+        target = cands[0];
+        let bd = Math.abs(cur - cands[0]);
+        for (const s of cands) { const d = Math.abs(cur - s); if (d < bd) { bd = d; target = s; } }
+      }
       sheetEl().classList.remove('no-anim');
-      applySheetState();
+      sheetEl().style.height = target + 'px';
+      drag = null;
     });
     handleEl.addEventListener('pointercancel', function(){
-      if (!dragInfo) return;
-      dragInfo = null;
+      if (!drag) return;
+      drag = null;
       sheetEl().classList.remove('no-anim');
-      applySheetState();
+      const snaps = snapHeights();
+      const cur = sheetEl().getBoundingClientRect().height;
+      let target = snaps[1], bd = Math.abs(cur - snaps[1]);
+      for (const s of snaps) { const d = Math.abs(cur - s); if (d < bd) { bd = d; target = s; } }
+      sheetEl().style.height = target + 'px';
     });
   })();
 
