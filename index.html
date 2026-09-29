@@ -28,11 +28,9 @@
   .ldot.red { background:#e74c3c; }
 
   #sheet { position:fixed; left:0; right:0; bottom:0; z-index:20; background:#fff; border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:52vh; transition:transform 0.28s cubic-bezier(.4,0,.2,1); }
-  #sheet.collapsed { transform:translateY(calc(100% - 36px)); }
-  #handle { height:28px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; }
+  #sheet.no-anim { transition:none; }
+  #handle { height:28px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; touch-action:none; user-select:none; -webkit-user-select:none; }
   #handle i { width:40px; height:4px; border-radius:2px; background:#d5d9e0; }
-  #handle #chev { position:absolute; right:18px; top:2px; font-size:18px; color:#b3b9c4; line-height:1; transition:transform 0.28s; }
-  #sheet.collapsed #handle #chev { transform:rotate(180deg); }
   #tabs { display:flex; padding:0 14px 8px; gap:8px; }
   #tabs button { flex:1; padding:8px 0; border:none; border-radius:10px; background:#f0f2f6; color:#556; font-size:13px; font-weight:600; cursor:pointer; }
   #tabs button.active { background:#1d73e8; color:#fff; }
@@ -86,7 +84,7 @@
 </header>
 
 <div id="sheet">
-  <div id="handle" onclick="toggleSheet()"><i></i><span id="chev">⌃</span></div>
+  <div id="handle"><i></i></div>
   <div id="tabs">
     <button id="tabDays" class="active" onclick="switchTab('days')">行程 9 天</button>
     <button id="tabSites" onclick="switchTab('sites')">景点 14 处</button>
@@ -346,9 +344,50 @@
     renderList();
   }
 
-  function toggleSheet(){
-    document.getElementById('sheet').classList.toggle('collapsed');
+  // ================= 底部面板拖拽（下拉收起 / 上滑展开 / 轻点切换） =================
+  let sheetCollapsed = false;
+  function sheetEl(){ return document.getElementById('sheet'); }
+  function collapseOffset(){ return sheetEl().getBoundingClientRect().height - 36; }
+  function sheetCurrentOffset(){
+    const m = sheetEl().style.transform.match(/translateY\((-?[\d.]+)px\)/);
+    return m ? parseFloat(m[1]) : 0;
   }
+  function applySheetState(){
+    sheetEl().style.transform = 'translateY(' + (sheetCollapsed ? collapseOffset() : 0) + 'px)';
+  }
+  (function(){
+    const handleEl = document.getElementById('handle');
+    let dragInfo = null;
+    handleEl.addEventListener('pointerdown', function(e){
+      dragInfo = { startY: e.clientY, startOffset: sheetCurrentOffset() };
+      sheetEl().classList.add('no-anim');
+      try { handleEl.setPointerCapture(e.pointerId); } catch(_) {}
+    });
+    handleEl.addEventListener('pointermove', function(e){
+      if (!dragInfo) return;
+      e.preventDefault();
+      const dy = e.clientY - dragInfo.startY;
+      const max = collapseOffset();
+      let off = dragInfo.startOffset + dy;
+      off = Math.max(0, Math.min(max, off));
+      sheetEl().style.transform = 'translateY(' + off + 'px)';
+    });
+    handleEl.addEventListener('pointerup', function(e){
+      if (!dragInfo) return;
+      const dy = e.clientY - dragInfo.startY;
+      if (Math.abs(dy) < 6) { sheetCollapsed = !sheetCollapsed; }
+      else { sheetCollapsed = dy > 0; }
+      dragInfo = null;
+      sheetEl().classList.remove('no-anim');
+      applySheetState();
+    });
+    handleEl.addEventListener('pointercancel', function(){
+      if (!dragInfo) return;
+      dragInfo = null;
+      sheetEl().classList.remove('no-anim');
+      applySheetState();
+    });
+  })();
 
   function focusSite(id){
     const s = SITES.find(function(x){ return x.id === id; });
