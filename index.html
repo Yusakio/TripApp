@@ -61,7 +61,7 @@
   #navSheet { position:fixed; left:0; right:0; bottom:0; z-index:41; background:#fff; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom) + 16px); transform:translateY(100%); transition:transform 0.25s ease; }
   #navSheet.show { transform:translateY(0); }
   #navSheet .ns-title { text-align:center; font-size:13px; color:#889; margin-bottom:12px; }
-  #navSheet button { display:block; width:100%; padding:13px 0; margin-bottom:10px; border:none; border-radius:12px; background:#f0f2f6; color:#222; font-size:15px; font-weight:600; cursor:pointer; }
+  #navSheet button, #navSheet a.nbtn { display:block; width:100%; padding:13px 0; margin-bottom:10px; border:none; border-radius:12px; background:#f0f2f6; color:#222; font-size:15px; font-weight:600; text-align:center; text-decoration:none; cursor:pointer; }
   #navSheet button:active { opacity:0.8; }
   #navSheet button.web { background:none; color:#1d73e8; font-size:13px; font-weight:400; margin-bottom:2px; }
   #navSheet button.cancel { background:none; color:#889; font-weight:400; margin-bottom:0; }
@@ -94,9 +94,9 @@
 <div id="navMask" onclick="closeNav()"></div>
 <div id="navSheet">
   <div class="ns-title">导航到：<span id="nsName"></span></div>
-  <button onclick="goApp('baidu')">百度地图</button>
-  <button onclick="goApp('apple')">苹果地图（系统自带）</button>
-  <button onclick="goApp('amap')">高德地图</button>
+  <a id="nBaidu" class="nbtn" onclick="closeNav()">百度地图</a>
+  <a id="nApple" class="nbtn" onclick="closeNav()">苹果地图（系统自带）</a>
+  <a id="nAmap" class="nbtn" onclick="closeNav()">高德地图</a>
   <button class="web" onclick="goWeb()">未装 App？点此用网页版导航</button>
   <button class="cancel" onclick="closeNav()">取消</button>
 </div>
@@ -277,45 +277,34 @@
     const s = SITES.find(function(x){ return x.id === id; });
     if (!s) return;
     pendingNav = { name: s.name, lat: s.gLat, lng: s.gLng };
-    showNavSheet(s.name);
+    showNavSheet(pendingNav);
   }
   function openNavDay(n){
     const d = DAYS.find(function(x){ return x.n === n; });
     if (!d) return;
     pendingNav = { name: d.name, lat: d.gLat, lng: d.gLng };
-    showNavSheet(d.name);
+    showNavSheet(pendingNav);
   }
-  function showNavSheet(name){
-    document.getElementById('nsName').textContent = name;
+  function navSchemes(n){
+    const nm = encodeURIComponent(n.name);
+    return {
+      baidu: 'baidumap://map/direction?destination=latlng:' + n.lat + ',' + n.lng + '|name:' + nm + '&mode=driving&coord_type=gcj02&src=tripapp',
+      apple: 'maps://?daddr=' + n.lat + ',' + n.lng + '&dirflg=d',
+      amap: 'iosamap://navi?sourceApplication=tripapp&poiname=' + nm + '&lat=' + n.lat + '&lon=' + n.lng + '&dev=0'
+    };
+  }
+  function showNavSheet(n){
+    document.getElementById('nsName').textContent = n.name;
+    const sc = navSchemes(n);
+    document.getElementById('nBaidu').setAttribute('href', sc.baidu);
+    document.getElementById('nApple').setAttribute('href', sc.apple);
+    document.getElementById('nAmap').setAttribute('href', sc.amap);
     document.getElementById('navMask').className = 'show';
     document.getElementById('navSheet').className = 'show';
   }
   function closeNav(){
     document.getElementById('navMask').className = '';
     document.getElementById('navSheet').className = '';
-  }
-
-  function openScheme(scheme){
-    const ifr = document.createElement('iframe');
-    ifr.style.display = 'none';
-    ifr.src = scheme;
-    document.body.appendChild(ifr);
-    setTimeout(function(){ if (ifr.parentNode) { ifr.parentNode.removeChild(ifr); } }, 3000);
-  }
-
-  function goApp(t){
-    const n = pendingNav; if (!n) return;
-    closeNav();
-    const nm = encodeURIComponent(n.name);
-    let scheme = '';
-    if (t === 'baidu') {
-      scheme = 'baidumap://map/direction?destination=latlng:' + n.lat + ',' + n.lng + '|name:' + nm + '&mode=driving&coord_type=gcj02&src=tripapp';
-    } else if (t === 'apple') {
-      scheme = 'maps://?daddr=' + n.lat + ',' + n.lng + '&dirflg=d';
-    } else if (t === 'amap') {
-      scheme = 'iosamap://navi?sourceApplication=tripapp&poiname=' + nm + '&lat=' + n.lat + '&lon=' + n.lng + '&dev=0';
-    }
-    openScheme(scheme);
   }
 
   function goWeb(){
