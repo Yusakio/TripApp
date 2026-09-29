@@ -51,8 +51,20 @@
   .pop .row { font-size:12px; color:#445; line-height:1.65; }
   .pop .row b { color:#222; }
   .pop .row.warn b { color:#e74c3c; }
-  .nav-btn { display:block; width:100%; margin-top:10px; padding:9px 0; border:none; border-radius:10px; background:#1d73e8; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+  .nav-btn { display:block; width:100%; margin-top:8px; padding:9px 0; border:none; border-radius:10px; background:#1d73e8; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
   .nav-btn:active { opacity:0.85; }
+  .nav-btn.book { background:#fff; color:#1d73e8; border:1px solid #1d73e8; }
+
+  /* 导航选择弹层 */
+  #navMask { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:40; display:none; }
+  #navMask.show { display:block; }
+  #navSheet { position:fixed; left:0; right:0; bottom:0; z-index:41; background:#fff; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom) + 16px); transform:translateY(100%); transition:transform 0.25s ease; }
+  #navSheet.show { transform:translateY(0); }
+  #navSheet .ns-title { text-align:center; font-size:13px; color:#889; margin-bottom:12px; }
+  #navSheet button { display:block; width:100%; padding:13px 0; margin-bottom:10px; border:none; border-radius:12px; background:#f0f2f6; color:#222; font-size:15px; font-weight:600; cursor:pointer; }
+  #navSheet button:active { opacity:0.8; }
+  #navSheet button.web { background:none; color:#1d73e8; font-size:13px; font-weight:400; margin-bottom:2px; }
+  #navSheet button.cancel { background:none; color:#889; font-weight:400; margin-bottom:0; }
 </style>
 </head>
 <body>
@@ -65,7 +77,7 @@
     <div class="legend">
       <span><i class="ldot blue"></i>景点（点按看详情）</span>
       <span><i class="ldot red"></i>需提前预约</span>
-      <span>点「去这里」跳百度地图导航</span>
+      <span>详情内可订票 / 导航</span>
     </div>
   </div>
 </header>
@@ -79,52 +91,91 @@
   <div id="list"></div>
 </div>
 
+<div id="navMask" onclick="closeNav()"></div>
+<div id="navSheet">
+  <div class="ns-title">导航到：<span id="nsName"></span></div>
+  <button onclick="goApp('baidu')">百度地图</button>
+  <button onclick="goApp('apple')">苹果地图（系统自带）</button>
+  <button onclick="goApp('amap')">高德地图</button>
+  <button class="web" onclick="goWeb()">未装 App？点此用网页版导航</button>
+  <button class="cancel" onclick="closeNav()">取消</button>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
 <script>
-  // ================= 数据 =================
+  // ================= 坐标转换（WGS84 -> GCJ02，用于高德底图/国内地图） =================
+  function outOfChina(lat, lng){ return (lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271); }
+  function transformLat(x, y){
+    let ret = -100.0 + 2.0*x + 3.0*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
+    ret += (20.0*Math.sin(6.0*x*Math.PI) + 20.0*Math.sin(2.0*x*Math.PI)) * 2.0/3.0;
+    ret += (20.0*Math.sin(y*Math.PI) + 40.0*Math.sin(y/3.0*Math.PI)) * 2.0/3.0;
+    ret += (160.0*Math.sin(y/12.0*Math.PI) + 320.0*Math.sin(y*Math.PI/30.0)) * 2.0/3.0;
+    return ret;
+  }
+  function transformLng(x, y){
+    let ret = 300.0 + x + 2.0*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x));
+    ret += (20.0*Math.sin(6.0*x*Math.PI) + 20.0*Math.sin(2.0*x*Math.PI)) * 2.0/3.0;
+    ret += (20.0*Math.sin(x*Math.PI) + 40.0*Math.sin(x/3.0*Math.PI)) * 2.0/3.0;
+    ret += (150.0*Math.sin(x/12.0*Math.PI) + 300.0*Math.sin(x/30.0*Math.PI)) * 2.0/3.0;
+    return ret;
+  }
+  function wgs2gcj(lat, lng){
+    if (outOfChina(lat, lng)) { return [lat, lng]; }
+    let dLat = transformLat(lng - 105.0, lat - 35.0);
+    let dLng = transformLng(lng - 105.0, lat - 35.0);
+    const radLat = lat / 180.0 * Math.PI;
+    let magic = Math.sin(radLat);
+    magic = 1 - 0.00669342162296594323 * magic * magic;
+    const sqrtMagic = Math.sqrt(magic);
+    dLat = (dLat * 180.0) / ((6378245.0 * (1 - 0.00669342162296594323)) / (magic * sqrtMagic) * Math.PI);
+    dLng = (dLng * 180.0) / (6378245.0 / sqrtMagic * Math.cos(radLat) * Math.PI);
+    return [lat + dLat, lng + dLng];
+  }
+
+  // ================= 数据（坐标为 WGS84，显示/导航自动转 GCJ02） =================
   const SITES = [
     { id:'danxia', name:'张掖七彩丹霞', lat:38.949, lng:100.077, day:'D1/D2',
       open:'6:30–18:00（9/1–10/31）', ticket:'74元（门票54+观光车20），两日有效',
-      booking:'官网 zydanxia.com / 微信「张掖七彩丹霞」，淡季现场可购', needBook:false },
+      booking:'官网购票 / 微信「张掖七彩丹霞」，淡季现场可购', bookUrl:'https://www.zydanxia.com', needBook:false },
     { id:'matisi', name:'马蹄寺', lat:38.418, lng:100.293, day:'D2',
       open:'08:00–18:00（17:00停入园）', ticket:'约 74 元',
-      booking:'现场/线上购票，一般无需抢', needBook:false },
+      booking:'现场 / 携程美团购票，一般无需抢', bookUrl:null, needBook:false },
     { id:'dafosi', name:'张掖大佛寺', lat:38.941, lng:100.447, day:'D2',
       open:'08:00–21:00（20:30停购票）', ticket:'约 40 元',
-      booking:'现场购票为主', needBook:false },
+      booking:'现场购票为主', bookUrl:null, needBook:false },
     { id:'jiayuguan', name:'嘉峪关关城', lat:39.800, lng:98.225, day:'D3',
       open:'08:00–18:30（18:00停售）', ticket:'旺季 110 元（悬壁长城/第一墩另购或联票）',
-      booking:'现场/线上购票', needBook:false },
+      booking:'现场 / OTA 购票', bookUrl:null, needBook:false },
     { id:'xuanbi', name:'悬壁长城', lat:39.830, lng:98.310, day:'D3',
       open:'08:00–20:00', ticket:'另购 / 联票',
-      booking:'与关城同购', needBook:false },
+      booking:'与关城同购', bookUrl:null, needBook:false },
     { id:'diyidun', name:'长城第一墩', lat:39.720, lng:98.200, day:'D3',
       open:'08:00–20:00', ticket:'另购 / 联票',
-      booking:'与关城同购', needBook:false },
+      booking:'与关城同购', bookUrl:null, needBook:false },
     { id:'mingsha', name:'鸣沙山月牙泉', lat:40.091, lng:94.668, day:'D4',
       open:'5:00–20:30', ticket:'110 元（半价55），票 3 天有效',
-      booking:'官网 mssyyq.net / 微信，旺季建议提前', needBook:false },
+      booking:'官网 / 微信「鸣沙山月牙泉」，旺季建议提前', bookUrl:'http://www.mssyyq.net', needBook:false },
     { id:'mogao', name:'莫高窟', lat:40.037, lng:94.806, day:'D5',
       open:'售票 9:00–15:00', ticket:'旺季 238 元 / 淡季 140 元',
-      booking:'实名预约：官网 dha.ac.cn / 微信「莫高窟参观预约网」，提前 7–15 天', needBook:true },
+      booking:'实名预约：官网 / 微信「莫高窟参观预约网」，提前 7–15 天', bookUrl:'https://www.dha.ac.cn', needBook:true },
     { id:'yumenguan', name:'玉门关', lat:40.353, lng:93.864, day:'D5',
       open:'8:00–19:30', ticket:'40 元',
-      booking:'现场 / 线上', needBook:false },
+      booking:'现场 / OTA 购票', bookUrl:null, needBook:false },
     { id:'yadan', name:'雅丹魔鬼城', lat:40.533, lng:93.150, day:'D5',
       open:'约 6:30–19:30', ticket:'120 元（含观光车）',
-      booking:'线上实名购票', needBook:false },
+      booking:'线上实名购票', bookUrl:'http://dunhuangyadan.net.cn', needBook:false },
     { id:'feicui', name:'大柴旦翡翠湖', lat:37.856, lng:95.371, day:'D6',
       open:'08:30–19:00', ticket:'50 元 + 观光车 40 元',
-      booking:'现场 / 线上', needBook:false },
+      booking:'现场 / OTA 购票', bookUrl:null, needBook:false },
     { id:'chaka', name:'茶卡盐湖（天空之镜）', lat:36.693, lng:99.085, day:'D7',
       open:'08:00–19:40（18:50停检）', ticket:'旺季 60 元，48h 二进',
-      booking:'实名分时预约：chakasl.com / 微信，提前 1–3 天', needBook:true },
+      booking:'实名分时预约：官网 / 微信，提前 1–3 天', bookUrl:'https://www.chakasl.com', needBook:true },
     { id:'erlangjian', name:'青海湖·二郎剑', lat:36.570, lng:100.443, day:'D8',
       open:'7:30–18:00（5/1–10/15）', ticket:'旺季 90 元，一票三日',
-      booking:'「智游青海湖」小程序/12306 实名预约，提前 3–7 天，限流 1.2 万', needBook:true },
+      booking:'微信小程序「智游青海湖」/ 12306 实名预约，提前 3–7 天', bookUrl:null, needBook:true },
     { id:'heimahe', name:'青海湖·黑马河', lat:36.729, lng:99.778, day:'D8/D9',
       open:'全天开放', ticket:'免费',
-      booking:'无需预约（环湖西路看景免费）', needBook:false }
+      booking:'无需购票（环湖西路看景免费）', bookUrl:null, needBook:false }
   ];
 
   const DAYS = [
@@ -139,13 +190,18 @@
     { n:9, name:'西宁', lat:36.617, lng:101.778, title:'青海湖日出 → 西宁', dist:'150km', stay:'返程（晚班机）', photo:'青海湖日出（黑马河）', tip:'注意航班时间' }
   ];
 
-  const ROUTE = [
+  const ROUTE_WGS = [
     [36.617, 101.778], [37.373, 101.623], [38.931, 100.455], [39.771, 98.289],
     [40.142, 94.662], [37.856, 95.371], [37.369, 97.371], [36.694, 99.086],
     [36.729, 99.778], [36.617, 101.778]
   ];
 
-  // ================= 地图 =================
+  // 预计算 GCJ02 坐标
+  SITES.forEach(function(s){ const g = wgs2gcj(s.lat, s.lng); s.gLat = g[0]; s.gLng = g[1]; });
+  DAYS.forEach(function(d){ const g = wgs2gcj(d.lat, d.lng); d.gLat = g[0]; d.gLng = g[1]; });
+  const ROUTE = ROUTE_WGS.map(function(p){ return wgs2gcj(p[0], p[1]); });
+
+  // ================= 地图（高德底图，国内加载快） =================
   let map = null;
   const markerMap = {};
 
@@ -155,7 +211,9 @@
       return;
     }
     map = L.map('map', { attributionControl:false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:18 }).addTo(map);
+    L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+      subdomains:'1234', maxZoom:18
+    }).addTo(map);
 
     const latlngs = ROUTE.map(function(p){ return [p[0], p[1]]; });
     L.polyline(latlngs, { color:'#ffffff', weight:9, opacity:0.9 }).addTo(map);
@@ -168,7 +226,7 @@
         html:'<div style="width:24px;height:24px;border-radius:50%;background:'+color+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35);">'+(i+1)+'</div>',
         iconSize:[24,24], iconAnchor:[12,12], popupAnchor:[0,-12]
       });
-      const m = L.marker([s.lat, s.lng], { icon:icon }).addTo(map);
+      const m = L.marker([s.gLat, s.gLng], { icon:icon }).addTo(map);
       m.bindPopup(sitePopupHtml(s), { closeButton:false, maxWidth:320 });
       markerMap[s.id] = m;
     });
@@ -179,12 +237,14 @@
   // ================= 弹窗 =================
   function sitePopupHtml(s){
     const tag = s.needBook ? '<span class="tag" style="color:#e74c3c;background:#fdecea;">需预约</span>' : '';
+    const bookBtn = s.bookUrl ? '<button class="nav-btn book" onclick="bookSite(\'' + s.id + '\')">在线订票 / 预约</button>' : '';
     return '<div class="pop">' +
       '<div class="pn">' + s.name + tag + '</div>' +
       '<div class="row"><b>开放</b>　' + s.open + '</div>' +
       '<div class="row"><b>门票</b>　' + s.ticket + '</div>' +
       '<div class="row warn"><b>预约</b>　' + s.booking + '</div>' +
-      '<button class="nav-btn" onclick="navToSite(\'' + s.id + '\')">去这里 · 百度导航</button>' +
+      bookBtn +
+      '<button class="nav-btn" onclick="openNav(\'' + s.id + '\')">导航去这里</button>' +
     '</div>';
   }
   function dayPopupHtml(d){
@@ -195,25 +255,74 @@
       '<div class="row"><b>住宿</b>　' + d.stay + '</div>' +
       '<div class="row"><b>摄影</b>　' + d.photo + '</div>' +
       '<div class="row warn"><b>提醒</b>　' + d.tip + '</div>' +
-      '<button class="nav-btn" onclick="navToLatLng(' + d.lat + ',' + d.lng + ',\'' + d.name + '\')">导航到 ' + d.name + '</button>' +
+      '<button class="nav-btn" onclick="openNavDay(' + d.n + ')">导航去这里</button>' +
     '</div>';
   }
 
-  // ================= 导航跳转（百度地图） =================
-  function navToLatLng(lat, lng, name){
-    const dest = 'latlng:' + lat + ',' + lng + '|name:' + encodeURIComponent(name);
-    const q = 'mode=driving&coord_type=wgs84&src=webapp.trip.qinggan';
-    const scheme = 'baidumap://map/direction?destination=' + dest + '&' + q;
-    const web = 'https://api.map.baidu.com/direction?destination=' + dest + '&' + q + '&output=html';
-    const t = Date.now();
-    window.location.href = scheme;
-    setTimeout(function(){
-      if (Date.now() - t < 2600) { window.location.href = web; }
-    }, 1200);
-  }
-  function navToSite(id){
+  // ================= 订票 =================
+  function bookSite(id){
     const s = SITES.find(function(x){ return x.id === id; });
-    if (s) { navToLatLng(s.lat, s.lng, s.name); }
+    if (!s) return;
+    if (s.bookUrl) {
+      window.open(s.bookUrl, '_blank');
+    } else {
+      alert('该景点请在「' + s.booking + '」办理，或到现场购买。');
+    }
+  }
+
+  // ================= 导航（iframe 唤起 App，页面保持不变） =================
+  let pendingNav = null;
+
+  function openNav(id){
+    const s = SITES.find(function(x){ return x.id === id; });
+    if (!s) return;
+    pendingNav = { name: s.name, lat: s.gLat, lng: s.gLng };
+    showNavSheet(s.name);
+  }
+  function openNavDay(n){
+    const d = DAYS.find(function(x){ return x.n === n; });
+    if (!d) return;
+    pendingNav = { name: d.name, lat: d.gLat, lng: d.gLng };
+    showNavSheet(d.name);
+  }
+  function showNavSheet(name){
+    document.getElementById('nsName').textContent = name;
+    document.getElementById('navMask').className = 'show';
+    document.getElementById('navSheet').className = 'show';
+  }
+  function closeNav(){
+    document.getElementById('navMask').className = '';
+    document.getElementById('navSheet').className = '';
+  }
+
+  function openScheme(scheme){
+    const ifr = document.createElement('iframe');
+    ifr.style.display = 'none';
+    ifr.src = scheme;
+    document.body.appendChild(ifr);
+    setTimeout(function(){ if (ifr.parentNode) { ifr.parentNode.removeChild(ifr); } }, 3000);
+  }
+
+  function goApp(t){
+    const n = pendingNav; if (!n) return;
+    closeNav();
+    const nm = encodeURIComponent(n.name);
+    let scheme = '';
+    if (t === 'baidu') {
+      scheme = 'baidumap://map/direction?destination=latlng:' + n.lat + ',' + n.lng + '|name:' + nm + '&mode=driving&coord_type=gcj02&src=tripapp';
+    } else if (t === 'apple') {
+      scheme = 'maps://?daddr=' + n.lat + ',' + n.lng + '&dirflg=d';
+    } else if (t === 'amap') {
+      scheme = 'iosamap://navi?sourceApplication=tripapp&poiname=' + nm + '&lat=' + n.lat + '&lon=' + n.lng + '&dev=0';
+    }
+    openScheme(scheme);
+  }
+
+  function goWeb(){
+    const n = pendingNav; if (!n) return;
+    closeNav();
+    const web = 'https://api.map.baidu.com/direction?destination=latlng:' + n.lat + ',' + n.lng + '|name:' + encodeURIComponent(n.name) + '&mode=driving&coord_type=gcj02&output=html&src=tripapp';
+    window.open(web, '_blank');
   }
 
   // ================= 列表 =================
@@ -248,14 +357,14 @@
   function focusSite(id){
     const s = SITES.find(function(x){ return x.id === id; });
     if (!map || !s) return;
-    map.setView([s.lat, s.lng], 12);
-    setTimeout(function(){ if (markerMap[id]) markerMap[id].openPopup(); }, 280);
+    map.setView([s.gLat, s.gLng], 12);
+    setTimeout(function(){ if (markerMap[id]) { markerMap[id].openPopup(); } }, 280);
   }
   function focusDay(n){
     const d = DAYS.find(function(x){ return x.n === n; });
     if (!map || !d) return;
-    map.setView([d.lat, d.lng], 11);
-    L.popup().setLatLng([d.lat, d.lng]).setContent(dayPopupHtml(d)).openOn(map);
+    map.setView([d.gLat, d.gLng], 11);
+    L.popup().setLatLng([d.gLat, d.gLng]).setContent(dayPopupHtml(d)).openOn(map);
   }
 
   // ================= 启动 =================

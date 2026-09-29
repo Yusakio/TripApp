@@ -1,5 +1,5 @@
 // 青甘自驾环线 PWA Service Worker
-const CACHE = 'qinggan-v1';
+const CACHE = 'qinggan-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -30,18 +30,36 @@ self.addEventListener('activate', function (e) {
 });
 
 self.addEventListener('fetch', function (e) {
-  var url = new URL(e.request.url);
+  const url = new URL(e.request.url);
+
   // 地图瓦片走网络，不缓存
-  if (/tile\.openstreetmap\.org|\.tile\./i.test(url.hostname)) {
+  if (/tile\.openstreetmap\.org|\.tile\.|is\.autonavi\.com/i.test(url.hostname)) {
     e.respondWith(fetch(e.request).catch(function () { return caches.match(e.request); }));
     return;
   }
+
+  // 主页面与清单：网络优先，失败回退缓存（保证拿到最新版）
+  const isHtml = e.request.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/') || url.pathname.endsWith('/manifest.json');
+  if (isHtml) {
+    e.respondWith(
+      fetch(e.request).then(function (res) {
+        const copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+        return res;
+      }).catch(function () {
+        return caches.match(e.request).then(function (cached) { return cached || caches.match('./index.html'); });
+      })
+    );
+    return;
+  }
+
+  // 其余静态资源：缓存优先
   e.respondWith(
     caches.match(e.request).then(function (cached) {
       if (cached) { return cached; }
       return fetch(e.request).then(function (res) {
-        if (res && res.status === 200 && (url.protocol === 'http:' || url.protocol === 'https:')) {
-          var copy = res.clone();
+        if (res && res.status === 200) {
+          const copy = res.clone();
           caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
         }
         return res;
