@@ -17,8 +17,8 @@
   body { font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; background:#eef1f5; color:#1f2430; }
   #map { position:fixed; top:0; left:0; right:0; bottom:0; z-index:0; }
 
-  #topbar { position:fixed; top:0; left:0; right:0; z-index:20; padding:calc(env(safe-area-inset-top) + 10px) 12px 0; }
-  #topbar .card { background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-radius:14px; padding:12px 14px; box-shadow:0 4px 20px rgba(0,0,0,0.10); }
+  #topbar { position:fixed; top:0; left:0; right:0; z-index:30; padding:calc(env(safe-area-inset-top) + 10px) 12px 0; pointer-events:none; }
+  #topbar .card { background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-radius:14px; padding:12px 14px; box-shadow:0 4px 20px rgba(0,0,0,0.10); pointer-events:auto; }
   #topbar h1 { margin:0; font-size:16px; font-weight:700; color:#111; }
   #topbar .sub { margin-top:4px; font-size:12px; color:#667; }
   .legend { margin-top:8px; font-size:11px; color:#556; line-height:1.7; }
@@ -27,10 +27,12 @@
   .ldot.blue { background:#1d73e8; }
   .ldot.red { background:#e74c3c; }
 
-  #sheet { position:fixed; left:0; right:0; bottom:0; z-index:20; background:#fff; border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,0.12); display:flex; flex-direction:column; height:52vh; overflow:hidden; transition:height 0.28s cubic-bezier(.4,0,.2,1); }
+  /* 底部面板 */
+  #sheet { position:fixed; left:0; right:0; bottom:calc(52px + env(safe-area-inset-bottom)); z-index:20; background:#fff; border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,0.12); display:flex; flex-direction:column; height:52vh; overflow:hidden; transition:height 0.28s cubic-bezier(.4,0,.2,1); }
   #sheet.no-anim { transition:none; }
   #handle { height:28px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; touch-action:none; user-select:none; -webkit-user-select:none; }
   #handle i { width:40px; height:4px; border-radius:2px; background:#d5d9e0; }
+  #sheetBody { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
   #tabs { display:flex; padding:0 14px 8px; gap:8px; flex:0 0 auto; }
   #tabs button { flex:1; padding:8px 0; border:none; border-radius:10px; background:#f0f2f6; color:#556; font-size:13px; font-weight:600; cursor:pointer; }
   #tabs button.active { background:#1d73e8; color:#fff; }
@@ -45,6 +47,41 @@
   .item .d { font-size:12px; color:#778; margin-top:2px; line-height:1.5; }
   .item .need { font-size:10px; color:#e74c3c; margin-left:6px; font-weight:600; }
 
+  /* 底部功能栏 */
+  #tabbar { position:fixed; left:0; right:0; bottom:0; z-index:25; background:#fff; border-top:1px solid #e8e8e8; display:flex; padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -2px 10px rgba(0,0,0,0.05); }
+  #tabbar .tab { flex:1; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; color:#889; border:none; background:none; font-size:11px; }
+  #tabbar .tab .ic { font-size:18px; line-height:1; }
+  #tabbar .tab.active { color:#1d73e8; font-weight:600; }
+
+  /* 海拔/天气面板 */
+  .panel { padding:4px 14px calc(env(safe-area-inset-bottom) + 16px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .panel h3 { font-size:14px; margin:10px 0 8px; color:#111; }
+  .seg { display:flex; gap:8px; margin-bottom:4px; }
+  .seg button { flex:1; padding:9px 0; border:1px solid #d8dde5; border-radius:10px; background:#fff; color:#445; font-size:13px; font-weight:600; cursor:pointer; }
+  .seg button.active { background:#1d73e8; border-color:#1d73e8; color:#fff; }
+  .big-btn { display:block; width:100%; padding:11px 0; border:none; border-radius:12px; background:#1d73e8; color:#fff; font-size:14px; font-weight:600; cursor:pointer; margin:8px 0; }
+  .big-btn:active { opacity:0.85; }
+  .elev-val { font-size:30px; font-weight:700; color:#1d73e8; text-align:center; padding:14px 0 4px; }
+  .elev-sub { text-align:center; color:#889; font-size:12px; margin-bottom:10px; }
+  .elev-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .elev-table td { padding:7px 4px; border-bottom:1px solid #f0f2f6; color:#445; }
+  .elev-table td:last-child { text-align:right; color:#1d73e8; font-weight:600; }
+  .wcard { background:#f6f8fb; border-radius:14px; padding:14px; margin:8px 0; }
+  .wcard .wmain { display:flex; align-items:center; justify-content:space-between; }
+  .wcard .wt { font-size:34px; font-weight:700; color:#111; }
+  .wcard .wd { font-size:15px; color:#445; margin-left:auto; text-align:right; }
+  .wcard .wd small { display:block; font-size:11px; color:#99a; }
+  .wrow { display:flex; gap:16px; margin-top:10px; font-size:12px; color:#667; }
+  .wday { display:flex; align-items:center; justify-content:space-between; padding:8px 2px; border-bottom:1px solid #f0f2f6; font-size:13px; }
+  .wday b { color:#111; }
+  .chips { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:2px 0 8px; }
+  .chips span { flex:0 0 auto; padding:6px 12px; border-radius:16px; background:#f0f2f6; color:#556; font-size:12px; cursor:pointer; white-space:nowrap; }
+  .chips span.active { background:#1d73e8; color:#fff; }
+
+  /* 提示 */
+  #toast { position:fixed; left:50%; bottom:140px; transform:translateX(-50%); background:rgba(0,0,0,0.78); color:#fff; font-size:13px; padding:9px 16px; border-radius:20px; z-index:60; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+  #toast.show { opacity:1; }
+
   .leaflet-popup-content-wrapper { border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,0.16); }
   .leaflet-popup-content { margin:14px 16px; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; min-width:230px; }
   .pop .pn { font-size:15px; font-weight:700; color:#111; margin-bottom:8px; }
@@ -52,6 +89,8 @@
   .pop .row { font-size:12px; color:#445; line-height:1.65; }
   .pop .row b { color:#222; }
   .pop .row.warn b { color:#e74c3c; }
+  .pop .mini { display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:#556; }
+  .pop .mini .copy { padding:4px 10px; border:1px solid #1d73e8; border-radius:8px; color:#1d73e8; font-size:11px; cursor:pointer; background:#fff; }
   .nav-btn { display:block; width:100%; margin-top:8px; padding:9px 0; border:none; border-radius:10px; background:#1d73e8; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
   .nav-btn:active { opacity:0.85; }
   .nav-btn.book { background:#fff; color:#1d73e8; border:1px solid #1d73e8; }
@@ -63,7 +102,6 @@
   #navSheet.show { transform:translateY(0); }
   #navSheet .ns-title { text-align:center; font-size:13px; color:#889; margin-bottom:12px; }
   #navSheet button, #navSheet a.nbtn { display:block; width:100%; padding:13px 0; margin-bottom:10px; border:none; border-radius:12px; background:#f0f2f6; color:#222; font-size:15px; font-weight:600; text-align:center; text-decoration:none; cursor:pointer; }
-  #navSheet button:active { opacity:0.8; }
   #navSheet button.web { background:none; color:#1d73e8; font-size:13px; font-weight:400; margin-bottom:2px; }
   #navSheet button.cancel { background:none; color:#889; font-weight:400; margin-bottom:0; }
 </style>
@@ -78,18 +116,20 @@
     <div class="legend">
       <span><i class="ldot blue"></i>景点（点按看详情）</span>
       <span><i class="ldot red"></i>需提前预约</span>
-      <span>详情内可订票 / 导航</span>
     </div>
   </div>
 </header>
 
 <div id="sheet">
   <div id="handle"><i></i></div>
-  <div id="tabs">
-    <button id="tabDays" class="active" onclick="switchTab('days')">行程 9 天</button>
-    <button id="tabSites" onclick="switchTab('sites')">景点 14 处</button>
-  </div>
-  <div id="list"></div>
+  <div id="sheetBody"></div>
+</div>
+
+<div id="tabbar">
+  <button class="tab" data-mode="map" onclick="switchMode('map')"><span class="ic">◇</span>地图</button>
+  <button class="tab active" data-mode="itinerary" onclick="switchMode('itinerary')"><span class="ic">≡</span>行程</button>
+  <button class="tab" data-mode="elevation" onclick="switchMode('elevation')"><span class="ic">△</span>海拔</button>
+  <button class="tab" data-mode="weather" onclick="switchMode('weather')"><span class="ic">☼</span>天气</button>
 </div>
 
 <div id="navMask" onclick="closeNav()"></div>
@@ -102,9 +142,11 @@
   <button class="cancel" onclick="closeNav()">取消</button>
 </div>
 
+<div id="toast"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
 <script>
-  // ================= 坐标转换（WGS84 -> GCJ02，用于高德底图/国内地图） =================
+  // ================= 坐标转换（WGS84 -> GCJ02） =================
   function outOfChina(lat, lng){ return (lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271); }
   function transformLat(x, y){
     let ret = -100.0 + 2.0*x + 3.0*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
@@ -133,50 +175,50 @@
     return [lat + dLat, lng + dLng];
   }
 
-  // ================= 数据（坐标为 WGS84，显示/导航自动转 GCJ02） =================
+  // ================= 数据 =================
   const SITES = [
-    { id:'danxia', name:'张掖七彩丹霞', lat:38.949, lng:100.077, day:'D1/D2',
+    { id:'danxia', name:'张掖七彩丹霞', lat:38.949, lng:100.077, day:'D1/D2', ele:1850,
       open:'6:30–18:00（9/1–10/31）', ticket:'74元（门票54+观光车20），两日有效',
-      booking:'官网购票 / 微信「张掖七彩丹霞」，淡季现场可购', bookUrl:'https://www.zydanxia.com', needBook:false },
-    { id:'matisi', name:'马蹄寺', lat:38.418, lng:100.293, day:'D2',
+      booking:'官网 / 微信「张掖七彩丹霞」，淡季现场可购', bookUrl:'https://www.zydanxia.com', mini:null, needBook:false },
+    { id:'matisi', name:'马蹄寺', lat:38.418, lng:100.293, day:'D2', ele:2500,
       open:'08:00–18:00（17:00停入园）', ticket:'约 74 元',
-      booking:'现场 / 携程美团购票，一般无需抢', bookUrl:null, needBook:false },
-    { id:'dafosi', name:'张掖大佛寺', lat:38.941, lng:100.447, day:'D2',
+      booking:'现场 / 携程美团购票', bookUrl:null, mini:null, needBook:false },
+    { id:'dafosi', name:'张掖大佛寺', lat:38.941, lng:100.447, day:'D2', ele:1480,
       open:'08:00–21:00（20:30停购票）', ticket:'约 40 元',
-      booking:'现场购票为主', bookUrl:null, needBook:false },
-    { id:'jiayuguan', name:'嘉峪关关城', lat:39.800, lng:98.225, day:'D3',
+      booking:'现场购票为主', bookUrl:null, mini:null, needBook:false },
+    { id:'jiayuguan', name:'嘉峪关关城', lat:39.800, lng:98.225, day:'D3', ele:1600,
       open:'08:00–18:30（18:00停售）', ticket:'旺季 110 元（悬壁长城/第一墩另购或联票）',
-      booking:'现场 / OTA 购票', bookUrl:null, needBook:false },
-    { id:'xuanbi', name:'悬壁长城', lat:39.830, lng:98.310, day:'D3',
+      booking:'现场 / OTA 购票', bookUrl:null, mini:null, needBook:false },
+    { id:'xuanbi', name:'悬壁长城', lat:39.830, lng:98.310, day:'D3', ele:1650,
       open:'08:00–20:00', ticket:'另购 / 联票',
-      booking:'与关城同购', bookUrl:null, needBook:false },
-    { id:'diyidun', name:'长城第一墩', lat:39.720, lng:98.200, day:'D3',
+      booking:'与关城同购', bookUrl:null, mini:null, needBook:false },
+    { id:'diyidun', name:'长城第一墩', lat:39.720, lng:98.200, day:'D3', ele:1500,
       open:'08:00–20:00', ticket:'另购 / 联票',
-      booking:'与关城同购', bookUrl:null, needBook:false },
-    { id:'mingsha', name:'鸣沙山月牙泉', lat:40.091, lng:94.668, day:'D4',
+      booking:'与关城同购', bookUrl:null, mini:null, needBook:false },
+    { id:'mingsha', name:'鸣沙山月牙泉', lat:40.091, lng:94.668, day:'D4', ele:1130,
       open:'5:00–20:30', ticket:'110 元（半价55），票 3 天有效',
-      booking:'官网 / 微信「鸣沙山月牙泉」，旺季建议提前', bookUrl:'http://www.mssyyq.net', needBook:false },
-    { id:'mogao', name:'莫高窟', lat:40.037, lng:94.806, day:'D5',
+      booking:'官网 / 微信「鸣沙山月牙泉」，旺季建议提前', bookUrl:'http://www.mssyyq.net', mini:null, needBook:false },
+    { id:'mogao', name:'莫高窟', lat:40.037, lng:94.806, day:'D5', ele:1130,
       open:'售票 9:00–15:00', ticket:'旺季 238 元 / 淡季 140 元',
-      booking:'实名预约：官网 / 微信「莫高窟参观预约网」，提前 7–15 天', bookUrl:'https://www.dha.ac.cn', needBook:true },
-    { id:'yumenguan', name:'玉门关', lat:40.353, lng:93.864, day:'D5',
+      booking:'实名预约，提前 7–15 天', bookUrl:'https://www.dha.ac.cn', mini:'莫高窟参观预约网', needBook:true },
+    { id:'yumenguan', name:'玉门关', lat:40.353, lng:93.864, day:'D5', ele:1000,
       open:'8:00–19:30', ticket:'40 元',
-      booking:'现场 / OTA 购票', bookUrl:null, needBook:false },
-    { id:'yadan', name:'雅丹魔鬼城', lat:40.533, lng:93.150, day:'D5',
+      booking:'现场 / OTA 购票', bookUrl:null, mini:null, needBook:false },
+    { id:'yadan', name:'雅丹魔鬼城', lat:40.533, lng:93.150, day:'D5', ele:900,
       open:'约 6:30–19:30', ticket:'120 元（含观光车）',
-      booking:'线上实名购票', bookUrl:'http://dunhuangyadan.net.cn', needBook:false },
-    { id:'feicui', name:'大柴旦翡翠湖', lat:37.856, lng:95.371, day:'D6',
+      booking:'线上实名购票', bookUrl:'http://dunhuangyadan.net.cn', mini:null, needBook:false },
+    { id:'feicui', name:'大柴旦翡翠湖', lat:37.856, lng:95.371, day:'D6', ele:3200,
       open:'08:30–19:00', ticket:'50 元 + 观光车 40 元',
-      booking:'现场 / OTA 购票', bookUrl:null, needBook:false },
-    { id:'chaka', name:'茶卡盐湖（天空之镜）', lat:36.693, lng:99.085, day:'D7',
+      booking:'现场 / OTA 购票', bookUrl:null, mini:null, needBook:false },
+    { id:'chaka', name:'茶卡盐湖（天空之镜）', lat:36.693, lng:99.085, day:'D7', ele:3100,
       open:'08:00–19:40（18:50停检）', ticket:'旺季 60 元，48h 二进',
-      booking:'实名分时预约：官网 / 微信，提前 1–3 天', bookUrl:'https://www.chakasl.com', needBook:true },
-    { id:'erlangjian', name:'青海湖·二郎剑', lat:36.570, lng:100.443, day:'D8',
+      booking:'实名分时预约，提前 1–3 天', bookUrl:'https://www.chakasl.com', mini:'天空之镜茶卡盐湖', needBook:true },
+    { id:'erlangjian', name:'青海湖·二郎剑', lat:36.570, lng:100.443, day:'D8', ele:3200,
       open:'7:30–18:00（5/1–10/15）', ticket:'旺季 90 元，一票三日',
-      booking:'微信小程序「智游青海湖」/ 12306 实名预约，提前 3–7 天', bookUrl:null, needBook:true },
-    { id:'heimahe', name:'青海湖·黑马河', lat:36.729, lng:99.778, day:'D8/D9',
+      booking:'实名预约，提前 3–7 天，限流 1.2 万', bookUrl:null, mini:'智游青海湖', needBook:true },
+    { id:'heimahe', name:'青海湖·黑马河', lat:36.729, lng:99.778, day:'D8/D9', ele:3200,
       open:'全天开放', ticket:'免费',
-      booking:'无需购票（环湖西路看景免费）', bookUrl:null, needBook:false }
+      booking:'无需购票（环湖西路看景免费）', bookUrl:null, mini:null, needBook:false }
   ];
 
   const DAYS = [
@@ -197,13 +239,12 @@
     [36.729, 99.778], [36.617, 101.778]
   ];
 
-  // 预计算 GCJ02 坐标
   SITES.forEach(function(s){ const g = wgs2gcj(s.lat, s.lng); s.gLat = g[0]; s.gLng = g[1]; });
   DAYS.forEach(function(d){ const g = wgs2gcj(d.lat, d.lng); d.gLat = g[0]; d.gLng = g[1]; });
   const ROUTE = ROUTE_WGS.map(function(p){ return wgs2gcj(p[0], p[1]); });
 
-  // ================= 地图（高德底图，国内加载快） =================
-  let map = null;
+  // ================= 地图 =================
+  let map = null, terrainLayer = null, terrainOn = false;
   const markerMap = {};
 
   function initMap() {
@@ -235,16 +276,30 @@
     map.fitBounds(L.latLngBounds(latlngs), { padding:[30,30] });
   }
 
+  function setTerrain(on){
+    terrainOn = on;
+    if (on) {
+      if (!terrainLayer) {
+        terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { subdomains:'abc', maxZoom:17 });
+      }
+      terrainLayer.addTo(map);
+    } else if (terrainLayer) {
+      map.removeLayer(terrainLayer);
+    }
+    renderElevation();
+  }
+
   // ================= 弹窗 =================
   function sitePopupHtml(s){
     const tag = s.needBook ? '<span class="tag" style="color:#e74c3c;background:#fdecea;">需预约</span>' : '';
-    const bookBtn = s.bookUrl ? '<button class="nav-btn book" onclick="bookSite(\'' + s.id + '\')">在线订票 / 预约</button>' : '';
+    let book = s.bookUrl ? '<button class="nav-btn book" onclick="bookSite(\'' + s.id + '\')">官网订票</button>' : '';
+    let mini = s.mini ? '<div class="mini">小程序：' + s.mini + '<span class="copy" onclick="copyMini(\'' + s.id + '\')">复制名称</span></div>' : '';
     return '<div class="pop">' +
       '<div class="pn">' + s.name + tag + '</div>' +
       '<div class="row"><b>开放</b>　' + s.open + '</div>' +
       '<div class="row"><b>门票</b>　' + s.ticket + '</div>' +
       '<div class="row warn"><b>预约</b>　' + s.booking + '</div>' +
-      bookBtn +
+      book + mini +
       '<button class="nav-btn" onclick="openNav(\'' + s.id + '\')">导航去这里</button>' +
     '</div>';
   }
@@ -264,28 +319,32 @@
   function bookSite(id){
     const s = SITES.find(function(x){ return x.id === id; });
     if (!s) return;
-    if (s.bookUrl) {
-      window.open(s.bookUrl, '_blank');
-    } else {
-      alert('该景点请在「' + s.booking + '」办理，或到现场购买。');
-    }
+    if (s.bookUrl) { window.open(s.bookUrl, '_blank'); }
+    else { toast('请通过「' + s.booking + '」办理'); }
   }
-
-  // ================= 导航（iframe 唤起 App，页面保持不变） =================
-  let pendingNav = null;
-
-  function openNav(id){
+  function copyMini(id){
     const s = SITES.find(function(x){ return x.id === id; });
-    if (!s) return;
-    pendingNav = { name: s.name, lat: s.gLat, lng: s.gLng };
-    showNavSheet(pendingNav);
+    if (!s || !s.mini) return;
+    copyText(s.mini);
+    toast('已复制「' + s.mini + '」，去微信搜索即可');
   }
-  function openNavDay(n){
-    const d = DAYS.find(function(x){ return x.n === n; });
-    if (!d) return;
-    pendingNav = { name: d.name, lat: d.gLat, lng: d.gLng };
-    showNavSheet(pendingNav);
+  function copyText(text){
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function(){ fallbackCopy(text); });
+    } else { fallbackCopy(text); }
   }
+  function fallbackCopy(text){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(_) {}
+    document.body.removeChild(ta);
+  }
+
+  // ================= 导航 =================
+  let pendingNav = null;
+  function openNav(id){ const s = SITES.find(function(x){ return x.id === id; }); if (!s) return; pendingNav = { name:s.name, lat:s.gLat, lng:s.gLng }; showNavSheet(pendingNav); }
+  function openNavDay(n){ const d = DAYS.find(function(x){ return x.n === n; }); if (!d) return; pendingNav = { name:d.name, lat:d.gLat, lng:d.gLng }; showNavSheet(pendingNav); }
   function navSchemes(n){
     const nm = encodeURIComponent(n.name);
     return {
@@ -307,7 +366,6 @@
     document.getElementById('navMask').className = '';
     document.getElementById('navSheet').className = '';
   }
-
   function goWeb(){
     const n = pendingNav; if (!n) return;
     closeNav();
@@ -315,11 +373,45 @@
     window.open(web, '_blank');
   }
 
-  // ================= 列表 =================
-  let currentTab = 'days';
+  // ================= 底部功能切换 =================
+  let mode = 'itinerary';
+  let listTab = 'days';
+
+  function switchMode(m){
+    mode = m;
+    const tabs = document.querySelectorAll('#tabbar .tab');
+    tabs.forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-mode') === m); });
+    const sheet = document.getElementById('sheet');
+    if (m === 'map') {
+      sheet.style.height = '36px';  // 收起
+    } else {
+      sheet.style.height = Math.round(window.innerHeight * 0.52) + 'px';
+      renderSheetBody();
+    }
+  }
+  function renderSheetBody(){
+    const el = document.getElementById('sheetBody');
+    if (mode === 'itinerary') { el.innerHTML = itineraryHtml(); renderList(); }
+    else if (mode === 'elevation') { el.innerHTML = elevationHtml(); }
+    else if (mode === 'weather') { el.innerHTML = weatherHtml(); }
+  }
+  function itineraryHtml(){
+    return '<div id="tabs">' +
+      '<button id="tabDays" class="' + (listTab === 'days' ? 'active' : '') + '" onclick="switchListTab(\'days\')">行程 9 天</button>' +
+      '<button id="tabSites" class="' + (listTab === 'sites' ? 'active' : '') + '" onclick="switchListTab(\'sites\')">景点 14 处</button>' +
+      '</div><div id="list"></div>';
+  }
+  function switchListTab(t){
+    listTab = t;
+    renderList();
+  }
   function renderList(){
     const el = document.getElementById('list');
-    if (currentTab === 'days') {
+    if (!el) return;
+    const t1 = document.getElementById('tabDays'), t2 = document.getElementById('tabSites');
+    if (t1) t1.className = listTab === 'days' ? 'active' : '';
+    if (t2) t2.className = listTab === 'sites' ? 'active' : '';
+    if (listTab === 'days') {
       el.innerHTML = DAYS.map(function(d){
         return '<div class="item" onclick="focusDay(' + d.n + ')">' +
           '<div class="badge blue">' + d.n + '</div>' +
@@ -337,18 +429,126 @@
     el.scrollTop = 0;
   }
 
-  function switchTab(t){
-    currentTab = t;
-    document.getElementById('tabDays').className = t === 'days' ? 'active' : '';
-    document.getElementById('tabSites').className = t === 'sites' ? 'active' : '';
-    renderList();
+  function focusSite(id){
+    const s = SITES.find(function(x){ return x.id === id; });
+    if (!map || !s) return;
+    map.setView([s.gLat, s.gLng], 12);
+    setTimeout(function(){ if (markerMap[id]) { markerMap[id].openPopup(); } }, 280);
+  }
+  function focusDay(n){
+    const d = DAYS.find(function(x){ return x.n === n; });
+    if (!map || !d) return;
+    map.setView([d.gLat, d.gLng], 11);
+    L.popup().setLatLng([d.gLat, d.gLng]).setContent(dayPopupHtml(d)).openOn(map);
   }
 
-  // ================= 底部面板拖拽（跟手三态：收起 / 中 / 盖住地图） =================
+  // ================= 海拔 =================
+  function elevationHtml(){
+    return '<div class="panel">' +
+      '<h3>海拔地图</h3>' +
+      '<div class="seg"><button class="' + (terrainOn ? '' : 'active') + '" onclick="setTerrain(false)">普通地图</button>' +
+      '<button class="' + (terrainOn ? 'active' : '') + '" onclick="setTerrain(true)">地形等高线</button></div>' +
+      '<h3>实时海拔</h3>' +
+      '<button class="big-btn" onclick="getMyElevation()">获取我的位置海拔</button>' +
+      '<div class="elev-val" id="myElev">—</div>' +
+      '<div class="elev-sub" id="myElevSub">点击上方按钮，定位后显示当前海拔</div>' +
+      '<h3>沿途景点海拔</h3>' +
+      '<table class="elev-table">' +
+      SITES.map(function(s){ return '<tr><td>' + s.name + '</td><td>约 ' + s.ele + ' m</td></tr>'; }).join('') +
+      '</table></div>';
+  }
+  function getMyElevation(){
+    if (!navigator.geolocation) { toast('当前环境不支持定位'); return; }
+    document.getElementById('myElevSub').textContent = '定位中…';
+    navigator.geolocation.getCurrentPosition(function(pos){
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      fetch('https://api.open-meteo.com/v1/elevation?latitude=' + lat + '&longitude=' + lng)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          const e = d && d.elevation && d.elevation[0];
+          document.getElementById('myElev').textContent = e != null ? Math.round(e) + ' m' : '—';
+          document.getElementById('myElevSub').textContent = '坐标 ' + lat.toFixed(4) + ', ' + lng.toFixed(4);
+        })
+        .catch(function(){ document.getElementById('myElevSub').textContent = '获取失败，请检查网络'; });
+    }, function(){
+      document.getElementById('myElevSub').textContent = '定位失败，请检查定位权限';
+    }, { enableHighAccuracy:true, timeout:8000 });
+  }
+
+  // ================= 天气 =================
+  function wmoText(code){
+    const c = code | 0;
+    if (c === 0) return '晴';
+    if (c === 1) return '基本晴';
+    if (c === 2) return '多云';
+    if (c === 3) return '阴';
+    if (c === 45 || c === 48) return '雾';
+    if (c >= 51 && c <= 57) return '毛毛雨';
+    if (c >= 61 && c <= 67) return '雨';
+    if (c >= 71 && c <= 77) return '雪';
+    if (c >= 80 && c <= 82) return '阵雨';
+    if (c === 85 || c === 86) return '阵雪';
+    if (c === 95) return '雷暴';
+    if (c === 96 || c === 99) return '雷暴冰雹';
+    return '—';
+  }
+  function weatherHtml(){
+    return '<div class="panel">' +
+      '<h3>查看天气</h3>' +
+      '<button class="big-btn" onclick="getMyWeather()">定位 · 查看当前位置天气</button>' +
+      '<div style="font-size:12px;color:#889;margin:2px 0 8px;">或选择沿途景点查看天气：</div>' +
+      '<div class="chips" id="weatherChips">' +
+      SITES.map(function(s, i){ return '<span data-i="' + i + '" onclick="getSiteWeather(' + i + ')">' + s.name + '</span>'; }).join('') +
+      '</div>' +
+      '<div id="weatherResult"></div>' +
+      '</div>';
+  }
+  function getMyWeather(){
+    if (!navigator.geolocation) { toast('当前环境不支持定位'); return; }
+    setWeatherLoading('定位中…');
+    navigator.geolocation.getCurrentPosition(function(pos){
+      fetchWeather(pos.coords.latitude, pos.coords.longitude, '当前位置');
+    }, function(){ setWeatherResult('定位失败，请检查定位权限'); }, { enableHighAccuracy:true, timeout:8000 });
+  }
+  function getSiteWeather(i){
+    const s = SITES[i];
+    document.querySelectorAll('#weatherChips span').forEach(function(x, j){ x.classList.toggle('active', j === i); });
+    setWeatherLoading('查询「' + s.name + '」天气…');
+    fetchWeather(s.lat, s.lng, s.name);
+  }
+  function fetchWeather(lat, lng, label){
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lng +
+      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m' +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=4';
+    fetch(url).then(function(r){ return r.json(); }).then(function(d){
+      renderWeather(d, label);
+    }).catch(function(){ setWeatherResult('获取失败，请检查网络'); });
+  }
+  function setWeatherLoading(t){ document.getElementById('weatherResult').innerHTML = '<div style="text-align:center;color:#889;padding:20px;">' + t + '</div>'; }
+  function setWeatherResult(t){ document.getElementById('weatherResult').innerHTML = '<div style="text-align:center;color:#889;padding:20px;">' + t + '</div>'; }
+  function renderWeather(d, label){
+    const cur = d.current, daily = d.daily;
+    let html = '<div class="wcard">' +
+      '<div style="font-size:13px;color:#445;margin-bottom:6px;">' + label + ' · 当前</div>' +
+      '<div class="wmain"><div class="wt">' + Math.round(cur.temperature_2m) + '°</div>' +
+      '<div class="wd">' + wmoText(cur.weather_code) + '<small>体感 ' + Math.round(cur.apparent_temperature) + '°</small></div></div>' +
+      '<div class="wrow"><span>湿度 ' + cur.relative_humidity_2m + '%</span><span>风速 ' + cur.wind_speed_10m + ' km/h</span></div>' +
+      '</div>';
+    const names = ['今天', '明天', '后天', '3天后'];
+    html += '<div class="wcard"><div style="font-size:13px;color:#445;margin-bottom:6px;">未来几天</div>';
+    for (let i = 0; i < daily.time.length && i < 4; i++) {
+      html += '<div class="wday"><span>' + names[i] + ' <span style="color:#99a;font-size:11px;">' + daily.time[i] + '</span></span>' +
+        '<span>' + wmoText(daily.weather_code[i]) + ' · <b>' + Math.round(daily.temperature_2m_max[i]) + '°</b> / ' + Math.round(daily.temperature_2m_min[i]) + '°</span></div>';
+    }
+    html += '</div>';
+    document.getElementById('weatherResult').innerHTML = html;
+  }
+
+  // ================= 底部面板拖拽 =================
   function sheetEl(){ return document.getElementById('sheet'); }
   function snapHeights(){
     const vh = window.innerHeight;
-    return [36, Math.round(vh * 0.52), Math.round(vh * 0.88)];
+    return [36, Math.round(vh * 0.52), Math.round(vh * 0.76)];
   }
   (function(){
     const handleEl = document.getElementById('handle');
@@ -396,22 +596,19 @@
     });
   })();
 
-  function focusSite(id){
-    const s = SITES.find(function(x){ return x.id === id; });
-    if (!map || !s) return;
-    map.setView([s.gLat, s.gLng], 12);
-    setTimeout(function(){ if (markerMap[id]) { markerMap[id].openPopup(); } }, 280);
-  }
-  function focusDay(n){
-    const d = DAYS.find(function(x){ return x.n === n; });
-    if (!map || !d) return;
-    map.setView([d.gLat, d.gLng], 11);
-    L.popup().setLatLng([d.gLat, d.gLng]).setContent(dayPopupHtml(d)).openOn(map);
+  // ================= 提示 =================
+  let toastTimer = null;
+  function toast(msg){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.className = ''; }, 2000);
   }
 
   // ================= 启动 =================
   initMap();
-  renderList();
+  renderSheetBody();
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function(){
       navigator.serviceWorker.register('./sw.js').catch(function(){});
