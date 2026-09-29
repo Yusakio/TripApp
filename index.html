@@ -66,8 +66,15 @@
   .page-body h3 { font-size:14px; margin:12px 0 8px; color:#111; }
   .big-btn { display:block; width:100%; padding:12px 0; border:none; border-radius:12px; background:#1d73e8; color:#fff; font-size:14px; font-weight:600; cursor:pointer; margin:8px 0; }
   .big-btn:active { opacity:0.85; }
-  .elev-val { font-size:32px; font-weight:700; color:#1d73e8; text-align:center; padding:14px 0 4px; }
-  .elev-sub { text-align:center; color:#889; font-size:12px; margin-bottom:10px; }
+  .hero-elev { background:linear-gradient(135deg,#1d73e8,#4a9bf5); border-radius:16px; padding:24px 18px; text-align:center; color:#fff; margin:4px 0 6px; box-shadow:0 6px 18px rgba(29,115,232,0.28); }
+  .hero-elev .hero-label { font-size:13px; opacity:0.85; }
+  .hero-elev .hero-val { font-size:48px; font-weight:700; line-height:1.2; }
+  .hero-elev .hero-sub { font-size:12px; opacity:0.85; margin-top:6px; }
+  .hero-weather { background:linear-gradient(135deg,#1d73e8,#4a9bf5); border-radius:16px; padding:22px 18px; text-align:center; color:#fff; margin:4px 0 12px; box-shadow:0 6px 18px rgba(29,115,232,0.28); }
+  .hero-weather .hero-label { font-size:13px; opacity:0.85; }
+  .hero-weather .hero-temp { font-size:48px; font-weight:700; line-height:1.15; }
+  .hero-weather .hero-desc { font-size:15px; margin-top:2px; }
+  .hero-weather .hero-meta { display:flex; justify-content:center; gap:18px; margin-top:10px; font-size:12px; opacity:0.9; }
   .elev-table { width:100%; border-collapse:collapse; font-size:13px; background:#fff; border-radius:12px; overflow:hidden; }
   .elev-table td { padding:10px 12px; border-bottom:1px solid #f0f2f6; color:#445; }
   .elev-table td:last-child { text-align:right; color:#1d73e8; font-weight:600; }
@@ -147,9 +154,11 @@
 <div id="pageElevation" class="page">
   <div class="page-head"><span class="title">海拔</span><span class="back" onclick="switchMode('map')">返回地图</span></div>
   <div class="page-body">
-    <button class="big-btn" onclick="getMyElevation()">获取我的位置海拔</button>
-    <div class="elev-val" id="myElev">—</div>
-    <div class="elev-sub" id="myElevSub">点击上方按钮，定位后显示当前海拔</div>
+    <div class="hero-elev">
+      <div class="hero-label">当前海拔 · 实时更新</div>
+      <div class="hero-val" id="myElev">—</div>
+      <div class="hero-sub" id="myElevSub">正在定位…</div>
+    </div>
     <h3>沿途景点海拔</h3>
     <table class="elev-table" id="elevTable"></table>
   </div>
@@ -158,6 +167,11 @@
 <div id="pageWeather" class="page">
   <div class="page-head"><span class="title">天气</span><span class="back" onclick="switchMode('map')">返回地图</span></div>
   <div class="page-body">
+    <div class="hero-weather" id="heroWeather">
+      <div class="hero-label">天气</div>
+      <div class="hero-temp">--</div>
+      <div class="hero-desc">点「定位」或选景点查看</div>
+    </div>
     <button class="big-btn" onclick="getMyWeather()">定位 · 查看当前位置天气</button>
     <div class="hint">或选择沿途景点查看天气：</div>
     <div class="chips" id="weatherChips"></div>
@@ -426,6 +440,8 @@
     } else {
       sheet.style.height = '36px';
     }
+    if (m === 'elevation') { startElevationTracking(); }
+    else { stopElevationTracking(); }
   }
   function switchListTab(t){
     listTab = t;
@@ -472,22 +488,43 @@
     document.getElementById('elevTable').innerHTML =
       SITES.map(function(s){ return '<tr><td>' + s.name + '</td><td>约 ' + s.ele + ' m</td></tr>'; }).join('');
   }
-  function getMyElevation(){
-    if (!navigator.geolocation) { toast('当前环境不支持定位'); return; }
-    document.getElementById('myElevSub').textContent = '定位中…';
-    navigator.geolocation.getCurrentPosition(function(pos){
-      const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      fetch('https://api.open-meteo.com/v1/elevation?latitude=' + lat + '&longitude=' + lng)
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          const e = d && d.elevation && d.elevation[0];
-          document.getElementById('myElev').textContent = e != null ? Math.round(e) + ' m' : '—';
-          document.getElementById('myElevSub').textContent = '坐标 ' + lat.toFixed(4) + ', ' + lng.toFixed(4);
-        })
-        .catch(function(){ document.getElementById('myElevSub').textContent = '获取失败，请检查网络'; });
-    }, function(){
-      document.getElementById('myElevSub').textContent = '定位失败，请检查定位权限';
-    }, { enableHighAccuracy:true, timeout:8000 });
+  let elevWatchId = null, elevTimer = null;
+  function startElevationTracking(){
+    if (elevWatchId) return;
+    refreshElevation();
+    if (navigator.geolocation) {
+      elevWatchId = navigator.geolocation.watchPosition(function(pos){
+        refreshElevation(pos.coords.latitude, pos.coords.longitude);
+      }, function(){
+        document.getElementById('myElevSub').textContent = '定位失败，请检查定位权限';
+      }, { enableHighAccuracy:true, timeout:10000, maximumAge:3000 });
+    }
+    elevTimer = setInterval(refreshElevation, 5000);
+  }
+  function stopElevationTracking(){
+    if (elevWatchId) { navigator.geolocation.clearWatch(elevWatchId); elevWatchId = null; }
+    if (elevTimer) { clearInterval(elevTimer); elevTimer = null; }
+  }
+  function refreshElevation(lat, lng){
+    if (lat == null || lng == null) {
+      if (!navigator.geolocation) { document.getElementById('myElevSub').textContent = '当前环境不支持定位'; return; }
+      navigator.geolocation.getCurrentPosition(function(pos){
+        refreshElevation(pos.coords.latitude, pos.coords.longitude);
+      }, function(){
+        document.getElementById('myElevSub').textContent = '定位失败，请检查定位权限';
+      }, { enableHighAccuracy:true, timeout:8000 });
+      return;
+    }
+    fetch('https://api.open-meteo.com/v1/elevation?latitude=' + lat + '&longitude=' + lng)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        const e = d && d.elevation && d.elevation[0];
+        document.getElementById('myElev').textContent = e != null ? Math.round(e) + ' m' : '—';
+        const now = new Date();
+        const hh = ('0' + now.getHours()).slice(-2), mm = ('0' + now.getMinutes()).slice(-2), ss = ('0' + now.getSeconds()).slice(-2);
+        document.getElementById('myElevSub').textContent = lat.toFixed(4) + ', ' + lng.toFixed(4) + ' · 更新于 ' + hh + ':' + mm + ':' + ss;
+      })
+      .catch(function(){ document.getElementById('myElevSub').textContent = '获取失败，请检查网络'; });
   }
 
   // ================= 天气 =================
@@ -529,14 +566,13 @@
   function setWeatherResult(t){ document.getElementById('weatherResult').innerHTML = '<div style="text-align:center;color:#889;padding:20px;">' + t + '</div>'; }
   function renderWeather(d, label){
     const cur = d.current, daily = d.daily;
-    let html = '<div class="wcard">' +
-      '<div style="font-size:13px;color:#445;margin-bottom:6px;">' + label + ' · 当前</div>' +
-      '<div class="wmain"><div class="wt">' + Math.round(cur.temperature_2m) + '°</div>' +
-      '<div class="wd">' + wmoText(cur.weather_code) + '<small>体感 ' + Math.round(cur.apparent_temperature) + '°</small></div></div>' +
-      '<div class="wrow"><span>湿度 ' + cur.relative_humidity_2m + '%</span><span>风速 ' + cur.wind_speed_10m + ' km/h</span></div>' +
-      '</div>';
+    document.getElementById('heroWeather').innerHTML =
+      '<div class="hero-label">' + label + ' · 当前</div>' +
+      '<div class="hero-temp">' + Math.round(cur.temperature_2m) + '°</div>' +
+      '<div class="hero-desc">' + wmoText(cur.weather_code) + ' · 体感 ' + Math.round(cur.apparent_temperature) + '°</div>' +
+      '<div class="hero-meta"><span>湿度 ' + cur.relative_humidity_2m + '%</span><span>风速 ' + cur.wind_speed_10m + ' km/h</span></div>';
     const names = ['今天', '明天', '后天', '3天后'];
-    html += '<div class="wcard"><div style="font-size:13px;color:#445;margin-bottom:6px;">未来几天</div>';
+    let html = '<div class="wcard"><div style="font-size:13px;color:#445;margin-bottom:6px;">未来几天</div>';
     for (let i = 0; i < daily.time.length && i < 4; i++) {
       html += '<div class="wday"><span>' + names[i] + ' <span style="color:#99a;font-size:11px;">' + daily.time[i] + '</span></span>' +
         '<span>' + wmoText(daily.weather_code[i]) + ' · <b>' + Math.round(daily.temperature_2m_max[i]) + '°</b> / ' + Math.round(daily.temperature_2m_min[i]) + '°</span></div>';
