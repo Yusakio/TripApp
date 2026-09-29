@@ -27,9 +27,12 @@
   .ldot.blue { background:#1d73e8; }
   .ldot.red { background:#e74c3c; }
 
-  #sheet { position:fixed; left:0; right:0; bottom:0; z-index:20; background:#fff; border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:52vh; }
-  #handle { height:24px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+  #sheet { position:fixed; left:0; right:0; bottom:0; z-index:20; background:#fff; border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:52vh; transition:transform 0.28s cubic-bezier(.4,0,.2,1); }
+  #sheet.collapsed { transform:translateY(calc(100% - 36px)); }
+  #handle { height:28px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; }
   #handle i { width:40px; height:4px; border-radius:2px; background:#d5d9e0; }
+  #handle #chev { position:absolute; right:18px; top:2px; font-size:18px; color:#b3b9c4; line-height:1; transition:transform 0.28s; }
+  #sheet.collapsed #handle #chev { transform:rotate(180deg); }
   #tabs { display:flex; padding:0 14px 8px; gap:8px; }
   #tabs button { flex:1; padding:8px 0; border:none; border-radius:10px; background:#f0f2f6; color:#556; font-size:13px; font-weight:600; cursor:pointer; }
   #tabs button.active { background:#1d73e8; color:#fff; }
@@ -83,7 +86,7 @@
 </header>
 
 <div id="sheet">
-  <div id="handle"><i></i></div>
+  <div id="handle" onclick="toggleSheet()"><i></i><span id="chev">⌃</span></div>
   <div id="tabs">
     <button id="tabDays" class="active" onclick="switchTab('days')">行程 9 天</button>
     <button id="tabSites" onclick="switchTab('sites')">景点 14 处</button>
@@ -341,6 +344,10 @@
     document.getElementById('tabDays').className = t === 'days' ? 'active' : '';
     document.getElementById('tabSites').className = t === 'sites' ? 'active' : '';
     renderList();
+  }
+
+  function toggleSheet(){
+    document.getElementById('sheet').classList.toggle('collapsed');
   }
 
   function focusSite(id){
